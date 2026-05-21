@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { getCategories, getGearByCategory, getOptions, getMembers } from '../lib/db'
 import { ColourDot } from '../components/ColourSwatch'
 
 export default function PartsSearch() {
@@ -9,28 +9,29 @@ export default function PartsSearch() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    supabase.from('gear_categories').select('*').order('display_order,name').then(({ data }) => setCategories(data || []))
+    getCategories().then(setCategories)
   }, [])
 
   useEffect(() => {
     if (!selectedCat) { setResults([]); return }
     setLoading(true)
-    supabase
-      .from('member_gear')
-      .select('*, members(name, colour, roof_colour, year, rego), gear_options(brand_model, source)')
-      .eq('category_id', selectedCat)
-      .order('members(name)')
-      .then(({ data }) => {
-        setResults(data || [])
+    Promise.all([getGearByCategory(selectedCat), getOptions(), getMembers()])
+      .then(([gearItems, opts, members]) => {
+        const optMap = Object.fromEntries(opts.map(o => [o.id, o]))
+        const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
+        setResults(
+          gearItems
+            .map(g => ({ option: optMap[g.option_id], member: memberMap[g.member_id] }))
+            .filter(r => r.option && r.member)
+        )
         setLoading(false)
       })
   }, [selectedCat])
 
-  // Group by gear option
   const grouped = results.reduce((acc, r) => {
-    const key = r.gear_options?.brand_model || 'Unknown'
-    if (!acc[key]) acc[key] = { option: r.gear_options, members: [] }
-    acc[key].members.push(r.members)
+    const key = r.option.id
+    if (!acc[key]) acc[key] = { option: r.option, members: [] }
+    acc[key].members.push(r.member)
     return acc
   }, {})
 
@@ -46,8 +47,8 @@ export default function PartsSearch() {
             onClick={() => setSelectedCat(c.id === selectedCat ? '' : c.id)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
               selectedCat === c.id
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                ? 'bg-[#1a9fd4] text-white border-[#1a9fd4]'
+                : 'bg-white text-gray-700 border-gray-200 hover:border-[#1a9fd4]'
             }`}
           >
             {c.name}
@@ -63,12 +64,12 @@ export default function PartsSearch() {
 
       {!loading && Object.keys(grouped).length > 0 && (
         <div className="space-y-4">
-          {Object.entries(grouped).map(([brandModel, { option, members }]) => (
-            <div key={brandModel} className="bg-white rounded-xl border border-gray-200 p-4">
+          {Object.values(grouped).map(({ option, members }) => (
+            <div key={option.id} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-semibold text-gray-900">{brandModel}</p>
-                  {option?.source && <p className="text-xs text-gray-500 mt-0.5">From: {option.source}</p>}
+                  <p className="font-semibold text-gray-900">{option.brand_model}</p>
+                  {option.source && <p className="text-xs text-gray-500 mt-0.5">From: {option.source}</p>}
                 </div>
                 <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
                   {members.length} {members.length === 1 ? 'member' : 'members'}
@@ -89,7 +90,7 @@ export default function PartsSearch() {
       )}
 
       {!selectedCat && (
-        <div className="text-center py-12 text-gray-300">
+        <div className="text-center py-12">
           <p className="text-5xl mb-3">🔍</p>
           <p className="text-gray-400">Select a category above to search</p>
         </div>

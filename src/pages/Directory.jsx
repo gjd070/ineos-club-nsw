@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { getMembers } from '../lib/db'
 import { ColourDot } from '../components/ColourSwatch'
 
 export default function Directory({ onSelect, onAdd }) {
@@ -7,18 +7,14 @@ export default function Directory({ onSelect, onAdd }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('members')
-      .select('*')
-      .order('name')
-      .then(({ data }) => { setMembers(data || []); setLoading(false) })
+    getMembers().then(data => { setMembers(data); setLoading(false) })
   }, [])
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Member Directory</h1>
-        <button onClick={onAdd} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+        <button onClick={onAdd} className="bg-[#1a9fd4] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1589b8] transition-colors">
           + Add Profile
         </button>
       </div>
@@ -30,7 +26,7 @@ export default function Directory({ onSelect, onAdd }) {
           <button
             key={m.id}
             onClick={() => onSelect(m.id)}
-            className="bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-gray-400 hover:shadow-sm transition-all"
+            className="bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-[#1a9fd4] hover:shadow-sm transition-all"
           >
             <div className="flex items-start justify-between mb-2">
               <span className="font-semibold text-gray-900 text-lg">{m.name}</span>
