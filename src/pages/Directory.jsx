@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { getMembers } from '../lib/db'
 import { ColourDot } from '../components/ColourSwatch'
+import PlateChip from '../components/PlateChip'
 
 export default function Directory({ onSelect, onAdd }) {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getMembers().then(data => { setMembers(data); setLoading(false) })
+    getMembers().then(data => { setMembers(data); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
   return (
@@ -36,9 +37,9 @@ export default function Directory({ onSelect, onAdd }) {
               </div>
             </div>
             <div className="text-sm text-gray-500 space-y-0.5">
-              {m.year && <div>{m.year} Grenadier</div>}
+              {(m.year || m.model) && <div>{[m.year, m.model ? `Ineos ${m.model}` : null, m.variant].filter(Boolean).join(' ')}</div>}
               {m.colour && <div>{m.colour}{m.roof_colour ? ` / ${m.roof_colour} roof` : ''}</div>}
-              {m.rego && <div className="font-mono text-xs bg-gray-100 inline-block px-2 py-0.5 rounded mt-1">{m.rego}</div>}
+              {m.rego && <div className="mt-1"><PlateChip rego={m.rego} state={m.state} /></div>}
             </div>
           </button>
         ))}

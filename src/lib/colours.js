@@ -9,4 +9,5 @@ export const INEOS_COLOURS = [
   { name: 'Donny Grey',      hex: '#7A7068' },
   { name: 'Sterling Silver', hex: '#A8A8A0' },
   { name: 'Iten',            hex: '#C8B89A' },
+  { name: 'Eldoret Blue',   hex: '#7BAFC8' },
 ]

@@ -6,6 +6,7 @@ import Directory from './pages/Directory'
 import MemberForm from './pages/MemberForm'
 import MemberDetail from './pages/MemberDetail'
 import PartsSearch from './pages/PartsSearch'
+import Settings from './pages/Settings'
 
 export default function App() {
   const [authed, setAuthed] = useState(isAuthenticated())
@@ -27,7 +28,8 @@ export default function App() {
         {page === 'detail'    && <MemberDetail id={selectedId} onEdit={id => nav('edit', id)} onBack={() => nav('directory')} />}
         {page === 'add'       && <MemberForm onSave={() => nav('directory')} onCancel={() => nav('directory')} />}
         {page === 'edit'      && <MemberForm id={selectedId} onSave={() => nav('detail', selectedId)} onCancel={() => nav('detail', selectedId)} />}
-        {page === 'search'    && <PartsSearch />}
+        {page === 'search'    && <PartsSearch onSelectMember={id => nav('detail', id)} />}
+        {page === 'settings'    && <Settings onBack={() => nav('directory')} />}
       </main>
     </div>
   )

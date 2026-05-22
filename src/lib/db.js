@@ -1,13 +1,15 @@
 import {
   collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
-  setDoc, query, where, orderBy, serverTimestamp,
+  setDoc, query, where, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
 
 // ── Members ────────────────────────────────────────────
 export async function getMembers() {
-  const snap = await getDocs(query(collection(db, 'members'), orderBy('name')))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const snap = await getDocs(collection(db, 'members'))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
 }
 
 export async function getMember(id) {
@@ -25,7 +27,6 @@ export async function updateMember(id, data) {
 }
 
 export async function deleteMember(id) {
-  // delete gear first
   const gearSnap = await getDocs(query(collection(db, 'member_gear'), where('member_id', '==', id)))
   await Promise.all(gearSnap.docs.map(d => deleteDoc(d.ref)))
   await deleteDoc(doc(db, 'members', id))
@@ -33,22 +34,103 @@ export async function deleteMember(id) {
 
 // ── Gear categories ────────────────────────────────────
 export async function getCategories() {
-  const snap = await getDocs(query(collection(db, 'gear_categories'), orderBy('display_order'), orderBy('name')))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const snap = await getDocs(collection(db, 'gear_categories'))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
+}
+
+export async function addCategory(name, display_order) {
+  await addDoc(collection(db, 'gear_categories'), { name: name.trim(), display_order })
+}
+
+export async function updateCategory(id, name) {
+  await updateDoc(doc(db, 'gear_categories', id), { name: name.trim() })
+}
+
+export async function deleteCategory(id) {
+  await deleteDoc(doc(db, 'gear_categories', id))
+}
+
+// ── Brands ─────────────────────────────────────────────
+export async function getBrands() {
+  const snap = await getDocs(collection(db, 'brands'))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+}
+
+export async function addBrand(name) {
+  const ref = await addDoc(collection(db, 'brands'), { name: name.trim() })
+  return ref.id
+}
+
+export async function updateBrand(id, name) {
+  await updateDoc(doc(db, 'brands', id), { name: name.trim() })
+}
+
+export async function deleteBrand(id) {
+  await deleteDoc(doc(db, 'brands', id))
+}
+
+// ── Suppliers ──────────────────────────────────────────
+export async function getSuppliers() {
+  const snap = await getDocs(collection(db, 'suppliers'))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+}
+
+export async function addSupplier(name) {
+  const ref = await addDoc(collection(db, 'suppliers'), { name: name.trim() })
+  return ref.id
+}
+
+export async function updateSupplier(id, name) {
+  await updateDoc(doc(db, 'suppliers', id), { name: name.trim() })
+}
+
+export async function deleteSupplier(id) {
+  await deleteDoc(doc(db, 'suppliers', id))
 }
 
 // ── Gear options ───────────────────────────────────────
 export async function getOptions() {
-  const snap = await getDocs(query(collection(db, 'gear_options'), orderBy('brand_model')))
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const snap = await getDocs(collection(db, 'gear_options'))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const aLabel = a.model || a.brand_model || ''
+      const bLabel = b.model || b.brand_model || ''
+      return aLabel.localeCompare(bLabel)
+    })
 }
 
-export async function addOption(category_id, brand_model, source) {
+export async function addOption(category_id, { brand_id, model, supplier_id, url }) {
   const ref = await addDoc(collection(db, 'gear_options'), {
-    category_id, brand_model: brand_model.trim(), source: source?.trim() || null,
+    category_id,
+    brand_id: brand_id || null,
+    model: model?.trim() || null,
+    supplier_id: supplier_id || null,
+    url: url?.trim() || null,
     created_at: serverTimestamp(),
   })
   return ref.id
+}
+
+export async function updateOption(id, { brand_id, model, supplier_id, url }) {
+  await updateDoc(doc(db, 'gear_options', id), {
+    brand_id: brand_id || null,
+    model: model?.trim() || null,
+    supplier_id: supplier_id || null,
+    url: url?.trim() || null,
+  })
+}
+
+export async function deleteOption(id) {
+  const gearSnap = await getDocs(query(collection(db, 'member_gear'), where('option_id', '==', id)))
+  await Promise.all(gearSnap.docs.map(d => deleteDoc(d.ref)))
+  await deleteDoc(doc(db, 'gear_options', id))
 }
 
 // ── Member gear ────────────────────────────────────────
@@ -62,10 +144,18 @@ export async function getGearByCategory(category_id) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-export async function setMemberGearItem(member_id, category_id, option_id) {
-  // Use deterministic ID so upsert works
+export async function getAllMemberGear() {
+  const snap = await getDocs(collection(db, 'member_gear'))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function setMemberGearItem(member_id, category_id, option_id, { notes, self_installed } = {}) {
   const id = `${member_id}_${category_id}`
-  await setDoc(doc(db, 'member_gear', id), { member_id, category_id, option_id })
+  await setDoc(doc(db, 'member_gear', id), {
+    member_id, category_id, option_id,
+    notes: notes?.trim() || null,
+    self_installed: self_installed ?? false,
+  })
 }
 
 export async function removeMemberGearItem(member_id, category_id) {

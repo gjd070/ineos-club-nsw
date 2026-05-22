@@ -22,6 +22,7 @@ export default function Nav({ page, onNav }) {
         <nav className="flex items-center gap-1">
           {link('directory', 'Members')}
           {link('search', 'Parts Search')}
+          {link('settings', 'Settings')}
           <button
             onClick={() => { logout(); window.location.reload() }}
             className="text-sm text-gray-400 hover:text-gray-700 ml-2 px-2"
