@@ -22,6 +22,7 @@ export default function Nav({ page, onNav }) {
         <nav className="flex items-center gap-1">
           {link('directory', 'Members')}
           {link('search', 'Parts Search')}
+          {link('articles', 'Articles')}
           {link('settings', 'Settings')}
           <button
             onClick={() => { logout(); window.location.reload() }}

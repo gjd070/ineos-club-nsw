@@ -2,7 +2,8 @@ import {
   collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
   setDoc, query, where, serverTimestamp,
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from './firebase'
 
 // ── Members ────────────────────────────────────────────
 export async function getMembers() {
@@ -161,4 +162,42 @@ export async function setMemberGearItem(member_id, category_id, option_id, { not
 export async function removeMemberGearItem(member_id, category_id) {
   const id = `${member_id}_${category_id}`
   await deleteDoc(doc(db, 'member_gear', id))
+}
+
+// ── Articles ───────────────────────────────────────────
+export async function getArticles() {
+  const snap = await getDocs(collection(db, 'articles'))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0))
+}
+
+export async function getArticle(id) {
+  const snap = await getDoc(doc(db, 'articles', id))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
+export async function createArticle(data) {
+  const ref = await addDoc(collection(db, 'articles'), { ...data, created_at: serverTimestamp() })
+  return ref.id
+}
+
+export async function updateArticle(id, data) {
+  await updateDoc(doc(db, 'articles', id), { ...data, updated_at: serverTimestamp() })
+}
+
+export async function deleteArticle(id) {
+  await deleteDoc(doc(db, 'articles', id))
+}
+
+// ── Image upload ───────────────────────────────────────
+export async function uploadArticleImage(file) {
+  const path = `articles/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+  const storageRef = ref(storage, path)
+  await uploadBytes(storageRef, file)
+  return { url: await getDownloadURL(storageRef), path }
+}
+
+export async function deleteArticleImage(path) {
+  await deleteObject(ref(storage, path)).catch(() => {})
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getCategories, getAllMemberGear, getOptions, getMembers, getBrands } from '../lib/db'
+import { getCategories, getAllMemberGear, getOptions, getMembers, getBrands, getArticles } from '../lib/db'
 import { ColourDot } from '../components/ColourSwatch'
 
 function optionLabel(opt, brandMap) {
@@ -17,18 +17,20 @@ export default function PartsSearch({ onSelectMember }) {
   const [allMembers, setAllMembers] = useState([])
   const [allMemberGear, setAllMemberGear] = useState([])
   const [brandMap, setBrandMap] = useState({})
+  const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(false)
   const [bootstrapped, setBootstrapped] = useState(false)
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([getCategories(), getOptions(), getMembers(), getAllMemberGear(), getBrands()])
-      .then(([cats, opts, members, gear, brands]) => {
+    Promise.all([getCategories(), getOptions(), getMembers(), getAllMemberGear(), getBrands(), getArticles()])
+      .then(([cats, opts, members, gear, brands, arts]) => {
         setCategories(cats)
         setAllOptions(opts)
         setAllMembers(members)
         setAllMemberGear(gear)
         setBrandMap(Object.fromEntries(brands.map(b => [b.id, b])))
+        setArticles(arts)
         setBootstrapped(true)
       })
       .catch(() => {})
@@ -151,6 +153,33 @@ export default function PartsSearch({ onSelectMember }) {
       {!loading && !hasResults && !isFiltered && bootstrapped && (
         <p className="text-gray-400 text-sm">No gear entries yet.</p>
       )}
+
+      {/* Related articles when a category is selected */}
+      {!loading && selectedCat && bootstrapped && (() => {
+        const related = articles.filter(a => (a.category_ids || []).includes(selectedCat))
+        if (!related.length) return null
+        return (
+          <div className="mt-8">
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Related Articles</h2>
+            <div className="space-y-2">
+              {related.map(article => (
+                <a key={article.id} href={`#article-${article.id}`}
+                  onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('nav-article', { detail: article.id })) }}
+                  className="flex items-start gap-3 bg-white rounded-xl border border-gray-200 p-3 hover:border-[#1a9fd4] transition-colors group"
+                >
+                  {article.cover_url && (
+                    <img src={article.cover_url} alt="" className="w-16 h-12 object-cover rounded-lg shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-[#1a9fd4] transition-colors">{article.title}</p>
+                    {article.excerpt && <p className="text-xs text-gray-500 mt-0.5 truncate">{article.excerpt}</p>}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
