@@ -1,3 +1,6 @@
+import { signInAnonymously, signOut } from 'firebase/auth'
+import { auth } from './firebase'
+
 const KEY = 'ineos_auth'
 const ADMIN_KEY = 'ineos_admin_auth'
 const PASSWORD = import.meta.env.VITE_CLUB_PASSWORD
@@ -7,15 +10,17 @@ export function isAuthenticated() {
   return sessionStorage.getItem(KEY) === 'true'
 }
 
-export function login(password) {
+export async function login(password) {
   if (password === PASSWORD) {
+    await signInAnonymously(auth)
     sessionStorage.setItem(KEY, 'true')
     return true
   }
   return false
 }
 
-export function logout() {
+export async function logout() {
+  await signOut(auth)
   sessionStorage.removeItem(KEY)
   sessionStorage.removeItem(ADMIN_KEY)
 }

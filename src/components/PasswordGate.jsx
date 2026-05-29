@@ -6,9 +6,9 @@ export default function PasswordGate({ onAuth }) {
   const [pw, setPw] = useState('')
   const [error, setError] = useState(false)
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
-    if (login(pw)) {
+    if (await login(pw)) {
       onAuth()
     } else {
       setError(true)

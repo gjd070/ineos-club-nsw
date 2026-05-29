@@ -25,7 +25,7 @@ export default function Nav({ page, onNav }) {
           {link('articles', 'Articles')}
           {link('settings', 'Settings')}
           <button
-            onClick={() => { logout(); window.location.reload() }}
+            onClick={() => logout().then(() => window.location.reload())}
             className="text-sm text-gray-400 hover:text-gray-700 ml-2 px-2"
           >
             Sign out
